@@ -1,18 +1,3 @@
-/*
-
-  References:
-
-  Assignment: 03
-  Version:    03.06 (comments and good var names)
-  Theme:      Nursing Bed
-  Developer:  Roberta Netzova
-
-  DONE: Basic functionality, Methods
-  General alarm, Still need improvements in temperature tracking
-
-  Methods:
-
-*/
 
 #include "button.h"
 #include "Display.h"
@@ -32,7 +17,8 @@ byte wheelIndex, pos, seg;
 int steps;
 int steps_done;
 int blink_tracker = 6;
-
+int melody_tracker = 7;
+char* resultWord = "PLAY";
 bool gameStarted = false;
 
 unsigned long timeInterval = 300;
@@ -52,11 +38,8 @@ void setup() {
 
   startTime = millis();
   steps = random(10, 100);
-  displayResult("PLAY");
-  delay(600);
-  displayResult("LOSS");
-  delay(600);
-  displayResult("GAIN");
+   displayWord(resultWord);
+   setGameValues();
 }
 
 void loop() {
@@ -67,7 +50,13 @@ void loop() {
     }
 
     if (doRotation() < 0) {
-      finishGame();
+      if (resultWord == "PLAY") {
+        finishGame();
+      }if (doMusic() <= 0) {
+          setGameValues();
+        }
+      
+
     }
   } else {
     if (ControllerBtn.is_pushed()) {
@@ -87,7 +76,7 @@ void play() {
   gameStarted = true;
   setTargetDigit (targetState, pos, seg);
   //  steps = random(10, 100);
-  steps = 50;
+  steps = 3;
   Serial.println(steps);
 }
 
@@ -111,14 +100,20 @@ int doRotation() {
 }
 
 void compareResults() {
+
   if (pos ==  getTargetPos(targetState) && seg == getTargetSeg(targetState)) {
     Serial.println ("SUCCESS");
-    displayResult("GAIN");
+    resultWord = "YEAH";
+    //        displayWord("GAIN");
   }
   else {
     Serial.println ("NO");
-    displayResult("LOSS");
-  } Serial.println ("....................");
+    resultWord = "LOSS";
+    //    displayWord("LOSS");
+  }
+  displayWord(resultWord);
+  Serial.println ("....................");
+
 }
 
 void finishGame () {
@@ -126,18 +121,22 @@ void finishGame () {
     return;
   }
 
+  compareResults();
+//  setGameValues();
+
   Serial.println(".................");
   Serial.println("END");
-
-  compareResults();
-  setGameValues();
 }
+
 
 void setGameValues() {
   gameStarted = false;
   steps = 0;
   steps_done = steps;
   blink_tracker = 6;
+  melody_tracker = 7;
+  resultWord = "PLAY";
+  displayWord(resultWord);
 }
 
 //.......................HELPING METHODS................
@@ -172,13 +171,45 @@ int blinkDigit() {
   return blink_tracker;
 }
 
+int doMusic() {
+  
+  int toneOdd =  100;
+  int toneEven = 500;
+  int duration = 500;
+  if (resultWord == "YEAH") {
+    toneOdd = 1000;
+    toneEven = 300;
+    duration = 100;
+    }
+  if (timeMeasure(duration)) {
+    if (checkIfOdd(melody_tracker--)) {
+      tone(BUZZER,toneOdd,500);
+    } else {
+       tone(BUZZER,toneEven);
+    }
+  }
+  return melody_tracker;
+}
+int blinkWord(char* word) {
+  if (timeMeasure(500)) {
+    if (checkIfOdd(melody_tracker--)) {
+      displayWord(word);
+    } else {
+      Display.clear();
+    }
+  }
+  Serial.println("Digits:");
+  Serial.println(melody_tracker);
+  return melody_tracker;
+}
+
 bool checkIfOdd (int num) {
   if (num % 2 != 0)
     return true;
   return false;
 }
 
-void displayResult(char* word) {
+void displayWord(char* word) {
   for (int i  = 0; i < 4; i ++) {
     Display.showCharAt(i, word[i]);
   }
