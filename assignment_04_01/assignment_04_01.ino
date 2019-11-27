@@ -31,15 +31,16 @@ byte targetState[] = {0, SEG_a};
 byte wheelIndex, pos, seg;
 int steps;
 int steps_done;
-int half;
-int third;
 int blink_tracker = 6;
 
 bool gameStarted = false;
+
 unsigned long timeInterval = 300;
 unsigned long startTime;
+
 void setup() {
   // put your setup code here, to run once:
+
   Display.clear();
   Serial.begin(9600);
   Serial.println ("Start....");
@@ -50,17 +51,15 @@ void setup() {
   digitalWrite(BUZZER, LOW);
 
   startTime = millis();
-  //  steps = random(10, 100);
-  steps  = 1;
-  int half = steps / 2;
-  int third = half / 2;
-  Serial.println(steps);
-  Serial.println(half);
-  Serial.println(third);
+  steps = random(10, 100);
+  displayResult("PLAY");
+  delay(600);
+  displayResult("LOSS");
+  delay(600);
+  displayResult("GAIN");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
 
   if (gameStarted) {
     if (ControllerBtn.is_pushed() || StartGameBtn.is_pushed()) {
@@ -68,12 +67,6 @@ void loop() {
     }
 
     if (doRotation() < 0) {
-      //Serial.println ("Rotatiton Stopped");
-//            if (blinkDigit() < 0) {
-//              Serial.println(".................");
-//              gameStarted = false;
-//              Serial.println("END");
-//              }
       finishGame();
     }
   } else {
@@ -82,45 +75,20 @@ void loop() {
       wheelStep();
     }
     if (StartGameBtn.is_pushed()) {
-      //      Serial.println ("play");
+      Serial.println ("play");
       play();
     }
   }
-  //  wheelStep();
-  //  delay(500);
 }
-void finishGame () {
-  if (blinkDigit() >= 0) { return;}
-  
-    Serial.println(".................");
-//    gameStarted = false;
-    Serial.println("END");
 
-    compareResults();
-    setGameValues();
-}
-void wheelStep() {
-  pos = rouletteStates[wheelIndex++];
-  seg = rouletteStates[wheelIndex++];
-  wheelIndex %= 24;
-  Display.clear();
-  Display.showDigitAt(pos, seg);
-}
-void displayTarget() {
-  Display.showDigitAt(targetState[0], targetState[1]);
-}
+//.............GAME METHODS..................
+
 void play() {
   gameStarted = true;
-  targetState[0] = pos;
-  targetState[1] = seg;
+  setTargetDigit (targetState, pos, seg);
   //  steps = random(10, 100);
-  steps = 3;
-  //  steps = 11;
-  half = steps / 2;
-  third = half / 2;
+  steps = 50;
   Serial.println(steps);
-  Serial.println(half);
-  Serial.println(third);
 }
 
 int doRotation() {
@@ -136,18 +104,33 @@ int doRotation() {
   } else {
     timeInterval += 20;
   }
-
-  if (steps_done > steps - 1) {
-    //    gameStarted = false;
-    //    compareResults();
-    //reset counters
-    //    if (blinkDigit() < 0)
-    //    setGameValues();
-
-  }
+  //tone(BUZZER, timeInterval, timeInterval);
   wheelStep();
   steps_done++;
   return steps - steps_done; //0
+}
+
+void compareResults() {
+  if (pos ==  getTargetPos(targetState) && seg == getTargetSeg(targetState)) {
+    Serial.println ("SUCCESS");
+    displayResult("GAIN");
+  }
+  else {
+    Serial.println ("NO");
+    displayResult("LOSS");
+  } Serial.println ("....................");
+}
+
+void finishGame () {
+  if (blinkDigit() >= 0) {
+    return;
+  }
+
+  Serial.println(".................");
+  Serial.println("END");
+
+  compareResults();
+  setGameValues();
 }
 
 void setGameValues() {
@@ -155,15 +138,16 @@ void setGameValues() {
   steps = 0;
   steps_done = steps;
   blink_tracker = 6;
-  
 }
-void compareResults() {
-  if (pos ==  targetState[0] && seg == targetState[1]) {
-    Serial.println ("SUCCESS");
-  }
-  else
-    Serial.println ("NO");
-  Serial.println ("....................");
+
+//.......................HELPING METHODS................
+
+void wheelStep() {
+  pos = rouletteStates[wheelIndex++];
+  seg = rouletteStates[wheelIndex++];
+  wheelIndex %= 24;
+  Display.clear();
+  Display.showDigitAt(pos, seg);
 }
 
 bool timeMeasure(unsigned long period) {
@@ -179,7 +163,7 @@ bool timeMeasure(unsigned long period) {
 
 int blinkDigit() {
   if (timeMeasure(100)) {
-    if (checkIfOdd (blink_tracker--)) {
+    if (checkIfOdd(blink_tracker--)) {
       Display.showDigitAt(pos, seg);
     } else {
       Display.clear();
@@ -192,4 +176,22 @@ bool checkIfOdd (int num) {
   if (num % 2 != 0)
     return true;
   return false;
+}
+
+void displayResult(char* word) {
+  for (int i  = 0; i < 4; i ++) {
+    Display.showCharAt(i, word[i]);
+  }
+}
+//...................GETTERS AND SETTERS....................
+
+void setTargetDigit(byte arr[], byte pos, byte seg) {
+  arr[0] = pos;
+  arr[1] = seg;
+}
+byte getTargetPos (byte arr[]) {
+  return arr[0];
+}
+byte getTargetSeg (byte arr[]) {
+  return arr[1];
 }
